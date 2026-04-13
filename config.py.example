@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""
+配置文件 - 请复制为 config.py 并填入你的 API Key
+"""
+import os
+from pathlib import Path
+
+# 硅基流动 API Key（从环境变量或直接填入）
+SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "your-api-key-here")
+
+# API 端点
+LLM_URL = "https://api.siliconflow.cn/v1/chat/completions"

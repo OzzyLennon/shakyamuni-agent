@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>释迦牟尼如Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 佛教素雅主题 */
+            --bg-dark: #0a0a0a;
+            --bg-card: #1a1a1a;
+            --bg-input: #252525;
+            --text-primary: #f5f5f0;
+            --text-secondary: #a0a095;
+            --text-muted: #606058;
+            --accent: #d4a574;
+            --accent-glow: rgba(212, 165, 116, 0.15);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            --radius: 16px;
+            --radius-lg: 24px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100dvh;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212, 165, 116, 0.06), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(212, 165, 116, 0.04), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            padding: 60px 0 40px;
+            text-align: center;
+        }
+
+        .logo-mark {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 24px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 28px;
+            color: var(--accent);
+            background: var(--bg-card);
+            box-shadow: 0 0 40px var(--accent-glow);
+        }
+
+        header h1 {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .chat-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .chat-messages {
+            padding: 32px;
+            min-height: 400px;
+            max-height: 55vh;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 3px;
+        }
+
+        .message {
+            margin-bottom: 28px;
+            opacity: 0;
+            transform: translateY(16px);
+            animation: messageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .message:last-child {
+            margin-bottom: 0;
+        }
+
+        @keyframes messageIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 85%;
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            line-height: 1.7;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .message.buddha .message-content {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .message-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+
+        .message.user .message-label {
+            justify-content: flex-end;
+        }
+
+        .model-tag {
+            background: var(--accent-glow);
+            color: var(--accent);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid rgba(212, 165, 116, 0.2);
+        }
+
+        /* 佛经面板 */
+        .sutra-panel {
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .sutra-panel.visible {
+            display: block;
+        }
+
+        .sutra-panel-header {
+            padding: 12px 20px;
+            background: var(--bg-input);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .sutra-panel-header:hover {
+            background: #2a2a2a;
+        }
+
+        .sutra-panel-header h4 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 0;
+        }
+
+        .sutra-panel-header .toggle-icon {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+
+        .sutra-panel-header.expanded .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .sutra-list-wrapper {
+            max-height: 0;
+            overflow: hidden;
+            background: var(--bg-input);
+            transition: max-height 0.3s ease;
+        }
+
+        .sutra-list-wrapper.expanded {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .sutra-list {
+            padding: 12px 20px 16px;
+        }
+
+        .sutra-item {
+            background: var(--bg-card);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+
+        .sutra-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .sutra-item:hover {
+            border-color: var(--border-hover);
+        }
+
+        .sutra-title {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .sutra-content {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 6px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        /* 输入区 */
+        .input-area {
+            padding: 20px 24px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        #question-input {
+            width: 100%;
+            padding: 14px 20px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #question-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        #question-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        #submit-btn {
+            padding: 14px 28px;
+            background: var(--accent);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        #submit-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        #submit-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        #submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            padding: 16px 20px;
+            display: none;
+        }
+
+        .typing-indicator.visible {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+
+        footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* 历史面板 */
+        .history-panel {
+            position: fixed;
+            right: -320px;
+            top: 0;
+            width: 320px;
+            height: 100dvh;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-panel.open {
+            right: 0;
+        }
+
+        .history-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .history-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .history-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px;
+        }
+
+        .history-close:hover {
+            color: var(--text-primary);
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .history-item {
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .history-item:hover {
+            border-color: var(--border-hover);
+            background: #2a2a2a;
+        }
+
+        .history-question {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .history-toggle-btn {
+            position: fixed;
+            right: 16px;
+            bottom: 100px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            z-index: 999;
+        }
+
+        .history-toggle-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+        }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            header {
+                padding: 40px 0 24px;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .chat-messages {
+                padding: 20px;
+                max-height: 45vh;
+            }
+
+            .message-content {
+                max-width: 92%;
+                padding: 12px 16px;
+                font-size: 0.9rem;
+            }
+
+            .input-area {
+                padding: 16px;
+                flex-direction: column;
+            }
+
+            #submit-btn {
+                width: 100%;
+                padding: 14px;
+            }
+
+            .history-panel {
+                width: 280px;
+            }
+
+            .history-toggle-btn {
+                right: 12px;
+                bottom: 80px;
+            }
+        }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+        .chat-container { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
+        .input-area { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-mark">佛</div>
+            <h1>释迦牟尼如Agent</h1>
+            <p>以佛陀教法，与你论生死解脱</p>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message buddha">
+                    <div class="message-label">
+                        <span class="model-tag">如来</span>
+                    </div>
+                    <div class="message-content">
+                        <p>阿弥陀佛。善男子/善女人，汝今来问，缘也。有什么关于佛法的问题，尽管来问。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sutra-panel" id="sutra-panel">
+                <div class="sutra-panel-header" id="sutra-header">
+                    <h4>相关佛经</h4>
+                    <span class="toggle-icon">▶</span>
+                </div>
+                <div class="sutra-list-wrapper" id="sutra-wrapper">
+                    <div class="sutra-list" id="sutra-list"></div>
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="question-input" placeholder="输入你的问题..." autocomplete="off">
+                </div>
+                <button id="submit-btn">提问</button>
+            </div>
+        </div>
+
+        <footer>
+            释迦牟尼如Agent · 佛经检索 + 人格蒸馏
+        </footer>
+
+        <!-- 历史面板 -->
+        <div class="history-panel" id="history-panel">
+            <div class="history-header">
+                <h3>历史问答</h3>
+                <div style="display:flex;gap:8px;">
+                    <button class="history-close" id="history-close">×</button>
+                </div>
+            </div>
+            <div style="padding:12px;border-bottom:1px solid var(--border);">
+                <button id="new-chat-btn" style="width:100%;padding:10px;border-radius:10px;background:var(--accent);color:var(--bg-dark);border:none;cursor:pointer;font-weight:600;">开启新对话</button>
+            </div>
+            <div class="history-list" id="history-list">
+                <div class="history-empty">暂无历史记录</div>
+            </div>
+        </div>
+
+        <!-- 历史面板开关 -->
+        <button class="history-toggle-btn" id="history-toggle" title="历史记录">☰</button>
+    </div>
+
+    <script>
+        // API 配置 - 部署时修改为你的服务器地址
+        const API_BASE_URL = '';
+
+        const chatMessages = document.getElementById('chat-messages');
+        const questionInput = document.getElementById('question-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const sutraPanel = document.getElementById('sutra-panel');
+        const sutraList = document.getElementById('sutra-list');
+        const sutraHeader = document.getElementById('sutra-header');
+        const sutraWrapper = document.getElementById('sutra-wrapper');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const historyPanel = document.getElementById('history-panel');
+        const historyList = document.getElementById('history-list');
+        const historyToggle = document.getElementById('history-toggle');
+        const historyClose = document.getElementById('history-close');
+        const newChatBtn = document.getElementById('new-chat-btn');
+
+        let isLoading = false;
+        let messageCount = 0;
+        let currentSession = [];
+        let chatHistory = JSON.parse(localStorage.getItem('buddha_sessions') || '[]');
+        let activeHistoryIdx = -1;
+
+        function formatTime(date) {
+            const h = date.getHours().toString().padStart(2, '0');
+            const m = date.getMinutes().toString().padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
+        function saveHistory() {
+            localStorage.setItem('buddha_sessions', JSON.stringify(chatHistory));
+        }
+
+        function renderHistory() {
+            if (chatHistory.length === 0) {
+                historyList.innerHTML = '<div class="history-empty">暂无历史记录</div>';
+                return;
+            }
+            historyList.innerHTML = chatHistory.map((session, idx) => `
+                <div class="history-item" data-idx="${idx}">
+                    <div class="history-question">${session.title}</div>
+                    <div class="history-time">${session.time}</div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    restoreSession(parseInt(item.dataset.idx));
+                });
+            });
+        }
+
+        function restoreSession(idx) {
+            const session = chatHistory[idx];
+            if (!session) return;
+
+            chatMessages.innerHTML = '';
+            currentSession = [];
+            messageCount = 0;
+
+            session.messages.forEach(msg => {
+                addMessage(msg.role, msg.content);
+            });
+
+            activeHistoryIdx = idx;
+            sutraPanel.classList.remove('visible');
+            historyPanel.classList.remove('open');
+        }
+
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            let labelHtml = '';
+            if (role === 'buddha') {
+                labelHtml = `
+                    <div class="message-label">
+                        <span class="model-tag">如来</span>
+                    </div>
+                `;
+            }
+
+            const formattedContent = content
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+
+            messageDiv.innerHTML = `
+                ${labelHtml}
+                <div class="message-content"><p>${formattedContent}</p></div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            messageCount++;
+            messageDiv.dataset.msgId = messageCount;
+            currentSession.push({ role, content });
+        }
+
+        function showTyping() {
+            typingIndicator.classList.add('visible');
+            chatMessages.appendChild(typingIndicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            typingIndicator.classList.remove('visible');
+        }
+
+        function showSutras(sutras) {
+            if (sutras && sutras.length > 0) {
+                sutraPanel.classList.add('visible');
+                sutraList.innerHTML = sutras.map(s => `
+                    <div class="sutra-item">
+                        <div class="sutra-title">${s}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function stripToneDescriptions(text) {
+            return text
+                .replace(/（[^）]*[微微笑低眉展眉合十垂目]*[^）]*）/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        historyToggle.addEventListener('click', () => {
+            historyPanel.classList.add('open');
+        });
+
+        historyClose.addEventListener('click', () => {
+            historyPanel.classList.remove('open');
+        });
+
+        newChatBtn.addEventListener('click', () => {
+            chatMessages.innerHTML = `
+                <div class="message buddha">
+                    <div class="message-label">
+                        <span class="model-tag">如来</span>
+                    </div>
+                    <div class="message-content">
+                        <p>阿弥陀佛。善男子/善女人，汝今来问，缘也。有什么关于佛法的问题，尽管来问。</p>
+                    </div>
+                </div>
+            `;
+            messageCount = 0;
+            currentSession = [];
+            activeHistoryIdx = -1;
+            sutraPanel.classList.remove('visible');
+            historyPanel.classList.remove('open');
+            questionInput.value = '';
+            questionInput.focus();
+            fetch(`${API_BASE_URL}/api/reset`, { method: 'POST' });
+        });
+
+        sutraHeader.addEventListener('click', () => {
+            sutraHeader.classList.toggle('expanded');
+            sutraWrapper.classList.toggle('expanded');
+        });
+
+        async function sendQuestion() {
+            const question = questionInput.value.trim();
+            if (!question || isLoading) return;
+
+            isLoading = true;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '思惟中...';
+            questionInput.value = '';
+
+            addMessage('user', question);
+            showTyping();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+
+                hideTyping();
+
+                if (data.error) {
+                    addMessage('buddha', `错误: ${data.error}`);
+                } else {
+                    const cleanAnswer = stripToneDescriptions(data.answer);
+                    addMessage('buddha', cleanAnswer);
+
+                    if (data.sutra_results && data.sutra_results.length > 0) {
+                        showSutras(data.sutra_results);
+                    }
+
+                    if (currentSession.length > 0) {
+                        if (activeHistoryIdx >= 0) {
+                            chatHistory[activeHistoryIdx].messages = [...currentSession];
+                        } else {
+                            const firstUserMsg = currentSession.find(m => m.role === 'user');
+                            const title = firstUserMsg
+                                ? firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '')
+                                : '新对话';
+                            chatHistory.unshift({
+                                title: title,
+                                time: formatTime(new Date()),
+                                messages: [...currentSession]
+                            });
+                            activeHistoryIdx = 0;
+                            if (chatHistory.length > 50) {
+                                chatHistory = chatHistory.slice(0, 50);
+                            }
+                        }
+                        saveHistory();
+                        renderHistory();
+                    }
+                }
+            } catch (error) {
+                hideTyping();
+                addMessage('buddha', `网络错误: ${error.message}`);
+            }
+
+            isLoading = false;
+            submitBtn.disabled = false;
+            submitBtn.textContent = '提问';
+            questionInput.focus();
+        }
+
+        submitBtn.addEventListener('click', sendQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendQuestion();
+        });
+
+        questionInput.focus();
+        renderHistory();
+    </script>
+</body>
+</html>
