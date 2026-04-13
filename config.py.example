@@ -10,3 +10,7 @@ SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "your-api-key-here")
 
 # API 端点
 LLM_URL = "https://api.siliconflow.cn/v1/chat/completions"
+
+# 联网检索配置
+WEB_SEARCH_ENABLED = True
+WEB_SEARCH_TOP_K = 5

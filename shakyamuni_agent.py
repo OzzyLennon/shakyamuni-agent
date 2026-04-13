@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from config import SILICONFLOW_API_KEY, LLM_URL
+from config import SILICONFLOW_API_KEY, LLM_URL, WEB_SEARCH_ENABLED, WEB_SEARCH_TOP_K
 
 # ============ API调用 ============
 def call_llm(messages, model="Pro/deepseek-ai/DeepSeek-V3.2"):
@@ -36,13 +36,12 @@ def call_buddha(args):
         result = subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
             timeout=30
         )
         if result.returncode == 0:
-            return result.stdout
+            return result.stdout.decode("utf-8", errors="replace")
         else:
-            print(f"[buddha-cli error] {result.stderr}", file=sys.stderr)
+            print(f"[buddha-cli error] {result.stderr.decode('utf-8', errors='replace')}", file=sys.stderr)
             return None
     except FileNotFoundError:
         print("[错误] buddha-cli 未安装或不在 PATH 中", file=sys.stderr)
@@ -63,12 +62,25 @@ def search_sutra(query, max_results=5, corpus="cbeta"):
     if not output:
         return []
 
-    # 解析输出（简单按行处理）
-    results = []
-    for line in output.strip().split("\n"):
-        if line.strip():
-            results.append(line.strip())
-    return results
+    try:
+        data = json.loads(output)
+        results = []
+        result_items = data.get("result", {}).get("results", [])
+        for item in result_items:
+            title = item.get("title", "")
+            matches = item.get("matches", [])
+            for match in matches:
+                context = match.get("context", "")
+                highlight = match.get("highlight", "")
+                line = match.get("line_number", "")
+                # 清理XML标签
+                clean_context = re.sub(r"<[^>]+>", "", context)
+                if title and clean_context:
+                    results.append(f"《{title}》第{line}行：{clean_context}")
+        return results
+    except (json.JSONDecodeError, KeyError):
+        # fallback: 原始按行输出
+        return [line.strip() for line in output.strip().split("\n") if line.strip()]
 
 def fetch_sutra(sutra_id, corpus="cbeta", line_number=None, context_before=3, context_after=5):
     """获取佛经段落"""
@@ -85,6 +97,76 @@ def resolve_sutra(query):
     """解析经名/别名到ID"""
     output = call_buddha(["resolve", "--query", query])
     return output if output else ""
+
+# ============ 联网检索 ============
+def web_search(query, top_k=WEB_SEARCH_TOP_K):
+    """
+    使用网络搜索补充最新信息
+    """
+    if not WEB_SEARCH_ENABLED:
+        return []
+
+    try:
+        from mcp__MiniMax__web_search import web_search as mini_max_search
+        result = mini_max_search(query)
+
+        if not result or "organic" not in result:
+            return []
+
+        results = []
+        for item in result["organic"][:top_k]:
+            results.append({
+                "title": item.get("title", ""),
+                "snippet": item.get("snippet", ""),
+                "link": item.get("link", ""),
+                "date": item.get("date", "")
+            })
+        return results
+    except Exception as e:
+        print(f"[联网检索失败] {e}", file=sys.stderr)
+        return []
+
+def format_web_results(search_results):
+    """格式化联网检索结果"""
+    if not search_results:
+        return ""
+
+    parts = ["【联网搜索补充】"]
+    for i, r in enumerate(search_results, 1):
+        date_info = f"（{r['date']}）" if r['date'] else ""
+        parts.append(
+            f"{i}. {r['title']}{date_info}\n"
+            f"   {r['snippet']}"
+        )
+    return "\n".join(parts)
+
+# ============ 问题分析 ============
+def analyze_question(question: str) -> dict:
+    """
+    分析问题类型和检索需求
+    """
+    q = question.lower()
+
+    # 检测现代话题（需要联网搜索）
+    modern_keywords = ["ai", "人工智能", "互联网", "电脑", "手机", "网络", "元宇宙",
+                      "区块链", "chatgpt", "现代", "当今", "今年", "去年", "明年",
+                      "科技", "技术", "算法", "程序员", "互联网", "新冠", "疫情"]
+    is_modern = any(kw in q for kw in modern_keywords)
+
+    # 佛教话题但非具体经文
+    is_buddhist_topic = any(kw in q for kw in ["佛教", "佛", "修行", "解脱", "轮回", "因果"])
+
+    # 是否涉及具体经文
+    sutra_names = ["金刚经", "心经", "法华经", "华严经", "阿弥陀经", "地藏经",
+                   "楞严经", "楞伽经", "四谛", "八正道", "缘起", "无常", "无我", "涅槃"]
+    has_sutra_name = any(name in question for name in sutra_names)
+
+    return {
+        "is_modern": is_modern,
+        "is_buddhist_topic": is_buddhist_topic,
+        "has_sutra_name": has_sutra_name,
+        "needs_web_search": is_modern or (is_buddhist_topic and not has_sutra_name)
+    }
 
 # ============ 情感检测 ============
 def detect_emotional_context(question: str) -> dict:
@@ -157,15 +239,26 @@ class ShakyamuniAgent:
         # 1. 情感检测
         emotion = detect_emotional_context(question)
 
-        # 2. 检索策略
+        # 2. 问题分析
+        question_analysis = analyze_question(question)
+
+        # 3. 检索策略
         retrieval = determine_retrieval_strategy(question)
 
-        # 3. 佛经检索
+        # 4. 佛经检索
         sutra_results = []
         if retrieval["strategy"] == "search":
             sutra_results = search_sutra(question, max_results=5, corpus=retrieval["corpus"])
 
-        # 4. 短期记忆
+        # 5. 联网检索（如果需要）
+        web_results = []
+        if question_analysis.get("needs_web_search"):
+            print(f"[联网检索] 检测到现代话题，正在搜索...")
+            web_results = web_search(question)
+            if web_results:
+                print(f"[联网检索] 获取到 {len(web_results)} 条结果")
+
+        # 6. 短期记忆
         short_term_context = ""
         if self.short_term_memory:
             for mem in reversed(self.short_term_memory[-5:]):
@@ -173,21 +266,23 @@ class ShakyamuniAgent:
                     short_term_context = mem.get("context", "")
                     break
 
-        # 5. 构建回答
-        answer = self._build_answer(question, emotion, retrieval, sutra_results, short_term_context)
+        # 7. 构建回答
+        answer = self._build_answer(question, emotion, question_analysis, web_results, sutra_results, short_term_context)
 
-        # 6. 更新记忆
+        # 8. 更新记忆
         self._update_memory(question, answer, sutra_results)
 
         return {
             "answer": answer,
             "emotion": emotion,
+            "question_analysis": question_analysis,
             "retrieval": retrieval,
-            "sutra_results": sutra_results
+            "sutra_results": sutra_results,
+            "web_results": web_results
         }
 
-    def _build_answer(self, question: str, emotion: dict, retrieval: dict,
-                     sutra_results: list, short_term_context: str) -> str:
+    def _build_answer(self, question: str, emotion: dict, question_analysis: dict,
+                     web_results: list, sutra_results: list, short_term_context: str) -> str:
         # 首次免责声明
         if not self.disclaimer_given:
             disclaimer = "我乃释迦牟尼佛，依佛经所载示现于此，非真身也。闻法当以经典为依。\n\n"
@@ -197,7 +292,7 @@ class ShakyamuniAgent:
 
         # 构建 Prompt
         system_prompt = self._build_system_prompt(emotion)
-        user_message = self._build_user_message(question, emotion, retrieval, sutra_results, short_term_context)
+        user_message = self._build_user_message(question, emotion, question_analysis, web_results, sutra_results, short_term_context)
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -243,8 +338,8 @@ class ShakyamuniAgent:
 4. 重要教言当以偈颂总结
 5. 表达当庄严肃穆，非戏论言"""
 
-    def _build_user_message(self, question: str, emotion: dict, retrieval: dict,
-                          sutra_results: list, short_term_context: str) -> str:
+    def _build_user_message(self, question: str, emotion: dict, question_analysis: dict,
+                          web_results: list, sutra_results: list, short_term_context: str) -> str:
         # 情感关怀提示
         compassion_note = ""
         if emotion.get("needs_compassion"):
@@ -257,6 +352,11 @@ class ShakyamuniAgent:
         else:
             sutra_note = "\n【佛经检索】未找到直接相关原文，请以教法回应。"
 
+        # 联网检索结果
+        web_note = ""
+        if web_results:
+            web_note = "\n\n【联网搜索补充】（以下为当前现实信息）\n" + format_web_results(web_results)
+
         # 短期记忆
         memory_note = ""
         if short_term_context:
@@ -266,9 +366,10 @@ class ShakyamuniAgent:
 {compassion_note}
 {memory_note}
 {sutra_note}
+{web_note}
 
 请以太梵牟尼佛的口吻回答。若有佛经原文，当以"如经中所说"或"在《某某经》中"的方式引用。
-如问法者有苦难，当先予安慰。"""
+如问法者有苦难，当先予安慰。对于联网搜索的现实信息，可结合佛教教义进行点评。"""
 
         return prompt
 
