@@ -191,16 +191,16 @@
         }
 
         /* 佛经面板 */
-        .sutra-panel {
+        .sources-panel {
             border-top: 1px solid var(--border);
             display: none;
         }
 
-        .sutra-panel.visible {
+        .sources-panel.visible {
             display: block;
         }
 
-        .sutra-panel-header {
+        .sources-panel-header {
             padding: 12px 20px;
             background: var(--bg-input);
             cursor: pointer;
@@ -211,12 +211,12 @@
             transition: background 0.2s;
         }
 
-        .sutra-panel-header:hover {
+        .sources-panel-header:hover {
             background: #2a2a2a;
         }
 
-        .sutra-panel-header h4 {
-            color: var(--text-muted);
+        .sources-panel-header h4 {
+            color: var(--accent);
             font-size: 0.75rem;
             font-weight: 500;
             text-transform: uppercase;
@@ -224,35 +224,34 @@
             margin: 0;
         }
 
-        .sutra-panel-header .toggle-icon {
+        .sources-panel-header .toggle-icon {
             color: var(--text-muted);
             font-size: 0.7rem;
             transition: transform 0.2s;
         }
 
-        .sutra-panel-header.expanded .toggle-icon {
+        .sources-panel-header.expanded .toggle-icon {
             transform: rotate(90deg);
         }
 
-        .sutra-list-wrapper {
+        .sources-list-wrapper {
             max-height: 0;
             overflow: hidden;
             background: var(--bg-input);
             transition: max-height 0.3s ease;
         }
 
-        .sutra-list-wrapper.expanded {
-            max-height: 300px;
+        .sources-list-wrapper.expanded {
+            max-height: 250px;
             overflow-y: auto;
         }
 
-        .sutra-list {
+        .sources-list {
             padding: 12px 20px 16px;
         }
 
-        .sutra-item {
+        .source-item {
             background: var(--bg-card);
-            padding: 12px 16px;
             border-radius: 12px;
             margin-bottom: 8px;
             font-size: 0.85rem;
@@ -260,25 +259,144 @@
             transition: border-color 0.2s;
         }
 
-        .sutra-item:last-child {
+        .source-item:last-child {
             margin-bottom: 0;
         }
 
-        .sutra-item:hover {
+        .source-item:hover {
             border-color: var(--border-hover);
         }
 
-        .sutra-title {
-            color: var(--accent);
-            font-weight: 500;
+        .source-header {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .sutra-content {
+        .source-title {
+            color: var(--accent);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .source-title .expand-icon {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .source-item.expanded .source-title .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .source-content {
+            display: none;
+            padding: 0 16px 12px;
             color: var(--text-secondary);
             font-size: 0.8rem;
-            margin-top: 6px;
-            line-height: 1.5;
+            line-height: 1.6;
             white-space: pre-wrap;
+        }
+
+        .source-item.expanded .source-content {
+            display: block;
+        }
+
+        /* 联网搜索面板 */
+        .web-panel {
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .web-panel.visible {
+            display: block;
+        }
+
+        .web-panel-header {
+            padding: 12px 20px;
+            background: var(--bg-input);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .web-panel-header:hover {
+            background: #2a2a2a;
+        }
+
+        .web-panel-header h4 {
+            color: #64b4ff;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 0;
+        }
+
+        .web-panel-header .toggle-icon {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+
+        .web-panel-header.expanded .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .web-list-wrapper {
+            max-height: 0;
+            overflow: hidden;
+            background: var(--bg-input);
+            transition: max-height 0.3s ease;
+        }
+
+        .web-list-wrapper.expanded {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .web-list {
+            padding: 12px 20px 16px;
+        }
+
+        .web-item {
+            background: var(--bg-card);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+        }
+
+        .web-item:last-child {
+            margin-bottom: 0;
+        }
+
+        blockquote {
+            border-left: 3px solid var(--accent);
+            padding: 8px 16px;
+            margin: 12px 0;
+            background: rgba(212, 165, 116, 0.05);
+            border-radius: 0 8px 8px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .web-title {
+            color: #64b4ff;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .web-snippet {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            line-height: 1.5;
         }
 
         /* 输入区 */
@@ -572,13 +690,23 @@
                 </div>
             </div>
 
-            <div class="sutra-panel" id="sutra-panel">
-                <div class="sutra-panel-header" id="sutra-header">
-                    <h4>相关佛经</h4>
+            <div class="sources-panel" id="sources-panel">
+                <div class="sources-panel-header" id="sources-header">
+                    <h4>佛经原文</h4>
                     <span class="toggle-icon">▶</span>
                 </div>
-                <div class="sutra-list-wrapper" id="sutra-wrapper">
-                    <div class="sutra-list" id="sutra-list"></div>
+                <div class="sources-list-wrapper" id="sources-wrapper">
+                    <div class="sources-list" id="sources-list"></div>
+                </div>
+            </div>
+
+            <div class="web-panel" id="web-panel">
+                <div class="web-panel-header" id="web-header">
+                    <h4>联网补充</h4>
+                    <span class="toggle-icon">▶</span>
+                </div>
+                <div class="web-list-wrapper" id="web-wrapper">
+                    <div class="web-list" id="web-list"></div>
                 </div>
             </div>
 
@@ -627,10 +755,14 @@
         const chatMessages = document.getElementById('chat-messages');
         const questionInput = document.getElementById('question-input');
         const submitBtn = document.getElementById('submit-btn');
-        const sutraPanel = document.getElementById('sutra-panel');
-        const sutraList = document.getElementById('sutra-list');
-        const sutraHeader = document.getElementById('sutra-header');
-        const sutraWrapper = document.getElementById('sutra-wrapper');
+        const sourcesPanel = document.getElementById('sources-panel');
+        const sourcesList = document.getElementById('sources-list');
+        const sourcesHeader = document.getElementById('sources-header');
+        const sourcesWrapper = document.getElementById('sources-wrapper');
+        const webPanel = document.getElementById('web-panel');
+        const webList = document.getElementById('web-list');
+        const webHeader = document.getElementById('web-header');
+        const webWrapper = document.getElementById('web-wrapper');
         const typingIndicator = document.getElementById('typing-indicator');
         const historyPanel = document.getElementById('history-panel');
         const historyList = document.getElementById('history-list');
@@ -686,7 +818,8 @@
             });
 
             activeHistoryIdx = idx;
-            sutraPanel.classList.remove('visible');
+            sourcesPanel.classList.remove('visible');
+            webPanel.classList.remove('visible');
             historyPanel.classList.remove('open');
         }
 
@@ -704,8 +837,14 @@
             }
 
             const formattedContent = content
+                .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
                 .replace(/\n\n/g, '</p><p>')
-                .replace(/\n/g, '<br>');
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>');
 
             messageDiv.innerHTML = `
                 ${labelHtml}
@@ -729,12 +868,55 @@
             typingIndicator.classList.remove('visible');
         }
 
-        function showSutras(sutras) {
-            if (sutras && sutras.length > 0) {
-                sutraPanel.classList.add('visible');
-                sutraList.innerHTML = sutras.map(s => `
-                    <div class="sutra-item">
-                        <div class="sutra-title">${s}</div>
+        function showSources(sources) {
+            if (sources && sources.length > 0) {
+                sourcesPanel.classList.add('visible');
+                sourcesList.innerHTML = sources.map((s, idx) => {
+                    // 解析格式：《标题》第X行：内容
+                    const match = s.match(/^《(.+?)》第(\d+)行：(.+)$/);
+                    if (match) {
+                        return `
+                            <div class="source-item" data-idx="${idx}">
+                                <div class="source-header">
+                                    <div class="source-title">
+                                        <span class="expand-icon">▶</span>
+                                        ${match[1]} 第${match[2]}行
+                                    </div>
+                                </div>
+                                <div class="source-content">${match[3]}</div>
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="source-item" data-idx="${idx}">
+                                <div class="source-header">
+                                    <div class="source-title">
+                                        <span class="expand-icon">▶</span>
+                                        ${s.substring(0, 50)}${s.length > 50 ? '...' : ''}
+                                    </div>
+                                </div>
+                                <div class="source-content">${s}</div>
+                            </div>
+                        `;
+                    }
+                }).join('');
+
+                // 添加点击展开事件
+                document.querySelectorAll('.source-item').forEach(item => {
+                    item.querySelector('.source-header').addEventListener('click', () => {
+                        item.classList.toggle('expanded');
+                    });
+                });
+            }
+        }
+
+        function showWebResults(webResults) {
+            if (webResults && webResults.length > 0) {
+                webPanel.classList.add('visible');
+                webList.innerHTML = webResults.map(w => `
+                    <div class="web-item">
+                        <div class="web-title">${w.title || ''}</div>
+                        <div class="web-snippet">${w.snippet || ''}</div>
                     </div>
                 `).join('');
             }
@@ -769,16 +951,22 @@
             messageCount = 0;
             currentSession = [];
             activeHistoryIdx = -1;
-            sutraPanel.classList.remove('visible');
+            sourcesPanel.classList.remove('visible');
+            webPanel.classList.remove('visible');
             historyPanel.classList.remove('open');
             questionInput.value = '';
             questionInput.focus();
             fetch(`${API_BASE_URL}/api/reset`, { method: 'POST' });
         });
 
-        sutraHeader.addEventListener('click', () => {
-            sutraHeader.classList.toggle('expanded');
-            sutraWrapper.classList.toggle('expanded');
+        sourcesHeader.addEventListener('click', () => {
+            sourcesHeader.classList.toggle('expanded');
+            sourcesWrapper.classList.toggle('expanded');
+        });
+
+        webHeader.addEventListener('click', () => {
+            webHeader.classList.toggle('expanded');
+            webWrapper.classList.toggle('expanded');
         });
 
         async function sendQuestion() {
@@ -792,6 +980,10 @@
 
             addMessage('user', question);
             showTyping();
+
+            // 隐藏佛经和联网面板
+            sourcesPanel.classList.remove('visible');
+            webPanel.classList.remove('visible');
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/chat`, {
@@ -811,7 +1003,11 @@
                     addMessage('buddha', cleanAnswer);
 
                     if (data.sutra_results && data.sutra_results.length > 0) {
-                        showSutras(data.sutra_results);
+                        showSources(data.sutra_results);
+                    }
+
+                    if (data.web_results && data.web_results.length > 0) {
+                        showWebResults(data.web_results);
                     }
 
                     if (currentSession.length > 0) {

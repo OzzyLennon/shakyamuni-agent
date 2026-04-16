@@ -33,7 +33,8 @@ def chat():
             "answer": result["answer"],
             "emotion": result["emotion"],
             "retrieval": result["retrieval"],
-            "sutra_results": result["sutra_results"]
+            "sutra_results": result["sutra_results"],
+            "web_results": result.get("web_results", [])
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -46,6 +47,6 @@ def reset():
 if __name__ == "__main__":
     print("=" * 60)
     print("       释迦牟尼如Agent Web服务启动中...")
-    print("请访问: http://127.0.0.1:5000")
+    print("请访问: http://127.0.0.1:5001")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)

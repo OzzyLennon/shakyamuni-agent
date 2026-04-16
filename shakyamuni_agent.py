@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from config import SILICONFLOW_API_KEY, LLM_URL, WEB_SEARCH_ENABLED, WEB_SEARCH_TOP_K
+from config import SILICONFLOW_API_KEY, LLM_URL, WEB_SEARCH_ENABLED, WEB_SEARCH_TOP_K, BUDDHA_CLI_PATH
 
 # ============ API调用 ============
 def call_llm(messages, model="Pro/deepseek-ai/DeepSeek-V3.2"):
@@ -30,8 +30,8 @@ def call_buddha(args):
     调用 buddha-cli 获取佛经原文
     args: list of strings, e.g. ["cbeta-search", "--query", "阿弥陀佛", "--max-results", "5"]
     """
-    # 假设 buddha 安装在 PATH 中
-    cmd = ["buddha"] + args
+    # 使用配置的 buddha-cli 路径
+    cmd = [BUDDHA_CLI_PATH] + args
     try:
         result = subprocess.run(
             cmd,
@@ -65,7 +65,8 @@ def search_sutra(query, max_results=5, corpus="cbeta"):
     try:
         data = json.loads(output)
         results = []
-        result_items = data.get("result", {}).get("results", [])
+        # 结构是 result._meta.results
+        result_items = data.get("result", {}).get("_meta", {}).get("results", [])
         for item in result_items:
             title = item.get("title", "")
             matches = item.get("matches", [])
@@ -101,27 +102,69 @@ def resolve_sutra(query):
 # ============ 联网检索 ============
 def web_search(query, top_k=WEB_SEARCH_TOP_K):
     """
-    使用网络搜索补充最新信息
+    使用 DuckDuckGo HTML 搜索补充最新信息
     """
     if not WEB_SEARCH_ENABLED:
         return []
 
     try:
-        from mcp__MiniMax__web_search import web_search as mini_max_search
-        result = mini_max_search(query)
+        import requests
+        import re
+        from urllib.parse import quote, unquote
 
-        if not result or "organic" not in result:
+        encoded_query = quote(query)
+        url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=15)
+
+        if response.status_code != 200:
+            print(f"[联网检索失败] DuckDuckGo返回状态码 {response.status_code}", file=sys.stderr)
             return []
 
+        html = response.text
         results = []
-        for item in result["organic"][:top_k]:
-            results.append({
-                "title": item.get("title", ""),
-                "snippet": item.get("snippet", ""),
-                "link": item.get("link", ""),
-                "date": item.get("date", "")
-            })
+
+        # DuckDuckGo HTML 格式：<a class="result__a" href="//duckduckgo.com/l/?uddg=URL-encoded" ...>标题</a>
+        # URL 会被编码并重定向，所以需要 decode
+        pattern = r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([^<]*)</a>'
+        matches = re.findall(pattern, html)
+
+        for link, title in matches[:top_k]:
+            # 清理标题中的多余空白
+            title = re.sub(r'\s+', ' ', title).strip()
+            # 解码 DuckDuckGo 重定向 URL
+            if 'duckduckgo.com/l/?uddg=' in link:
+                link = unquote(link.split('uddg=')[-1])
+            # 跳过空标题和内部链接
+            if title and len(title) > 2 and (link.startswith('http') or link.startswith('https')):
+                results.append({
+                    "title": title,
+                    "snippet": "",
+                    "link": link,
+                    "date": ""
+                })
+
+        if results:
+            return results
+
+        # fallback: 尝试匹配 result__snippets
+        snippet_pattern = r'<a[^>]*class="result__snippet"[^>]*>([^<]*)</a>'
+        snippet_matches = re.findall(snippet_pattern, html)
+        for s in snippet_matches[:top_k]:
+            s = re.sub(r'\s+', ' ', s).strip()
+            if s:
+                results.append({
+                    "title": s[:60],
+                    "snippet": s,
+                    "link": "",
+                    "date": ""
+                })
+
         return results
+
     except Exception as e:
         print(f"[联网检索失败] {e}", file=sys.stderr)
         return []
@@ -141,6 +184,39 @@ def format_web_results(search_results):
     return "\n".join(parts)
 
 # ============ 问题分析 ============
+# 真正的佛经名称（可用于 fetch 获取特定经文段落）
+ACTUAL_SUTRA_NAMES = [
+    "金刚经", "心经", "法华经", "华严经", "阿弥陀经", "地藏经",
+    "楞严经", "楞伽经", "维摩经", "圆觉经", "愣严经", "六祖坛经", "坛经",
+    "无量寿经", "观无量寿经", "普贤菩萨行愿品", "普贤行愿品",
+    "四十二章经", "八大人觉经", "遗教经"
+]
+
+# 佛教核心概念（可用于判断是否佛教话题 + 触发联网搜索）
+BUDDHIST_CONCEPTS = [
+    "无常", "无我", "空", "中道", "缘起", "轮回", "因果",
+    "涅槃", "寂静", "圆满", "清净", "慈悲", "智慧", "般若",
+    "四谛", "八正道", "十二因缘", "戒", "定", "慧",
+    "解脱", "生死", "轮回", "往生", "净土", "极乐",
+    "佛性", "如来", "菩萨", "罗汉", "菩提", "觉悟",
+    "业力", "执着", "分别", "妄想", "执着", "烦恼",
+    "禅定", "止观", "念佛", "持戒", "布施", "忍辱"
+]
+
+# 佛教话题关键词（用于判断是否佛教相关）
+BUDDHIST_TOPIC_KEYWORDS = [
+    "佛教", "佛陀", "佛法", "佛经", "寺院", "僧人", "修行",
+    "释迦", "罗汉", "菩萨", "如来", "弥勒"
+]
+
+def extract_buddhist_concepts(question: str) -> list:
+    """从问题中提取佛教概念关键词"""
+    found = []
+    for concept in BUDDHIST_CONCEPTS:
+        if concept in question:
+            found.append(concept)
+    return found
+
 def analyze_question(question: str) -> dict:
     """
     分析问题类型和检索需求
@@ -149,23 +225,34 @@ def analyze_question(question: str) -> dict:
 
     # 检测现代话题（需要联网搜索）
     modern_keywords = ["ai", "人工智能", "互联网", "电脑", "手机", "网络", "元宇宙",
-                      "区块链", "chatgpt", "现代", "当今", "今年", "去年", "明年",
-                      "科技", "技术", "算法", "程序员", "互联网", "新冠", "疫情"]
+                      "区块链", "chatgpt", "claude", "现代", "当今", "今年", "去年", "明年",
+                      "科技", "技术", "算法", "程序员", "新冠", "疫情", "经济", "政治"]
     is_modern = any(kw in q for kw in modern_keywords)
 
-    # 佛教话题但非具体经文
-    is_buddhist_topic = any(kw in q for kw in ["佛教", "佛", "修行", "解脱", "轮回", "因果"])
+    # 是否佛教话题
+    is_buddhist_topic = any(kw in q for kw in BUDDHIST_TOPIC_KEYWORDS)
 
-    # 是否涉及具体经文
-    sutra_names = ["金刚经", "心经", "法华经", "华严经", "阿弥陀经", "地藏经",
-                   "楞严经", "楞伽经", "四谛", "八正道", "缘起", "无常", "无我", "涅槃"]
-    has_sutra_name = any(name in question for name in sutra_names)
+    # 如果问题中包含佛教概念，也视为佛教话题
+    concepts_found = extract_buddhist_concepts(question)
+    if concepts_found:
+        is_buddhist_topic = True
+
+    # 是否涉及具体佛经名
+    has_sutra_name = any(name in question for name in ACTUAL_SUTRA_NAMES)
+
+    # 是否涉及佛教概念（可能需要联网补充现代解读）
+    has_buddhist_concept = len(concepts_found) > 0
+
+    # 需要联网搜索：现代话题，或者佛教概念但问的是概念解释
+    needs_web_search = is_modern or (is_buddhist_topic and (has_buddhist_concept or not has_sutra_name))
 
     return {
         "is_modern": is_modern,
         "is_buddhist_topic": is_buddhist_topic,
         "has_sutra_name": has_sutra_name,
-        "needs_web_search": is_modern or (is_buddhist_topic and not has_sutra_name)
+        "has_buddhist_concept": has_buddhist_concept,
+        "concepts_found": concepts_found,
+        "needs_web_search": needs_web_search
     }
 
 # ============ 情感检测 ============
@@ -191,26 +278,25 @@ def determine_retrieval_strategy(question: str) -> dict:
     """
     q = question.lower()
 
-    # 检测是否涉及具体佛经名
-    sutra_names = ["金刚经", "心经", "法华经", "华严经", "阿弥陀经", "地藏经",
-                   "楞严经", "楞伽经", "四谛", "八正道", "缘起", "无常", "无我", "涅槃"]
-    has_sutra_name = any(name in q for name in sutra_names)
+    # 检测是否涉及具体佛经名（只有经名才用 fetch）
+    has_sutra_name = any(name in q for name in ACTUAL_SUTRA_NAMES)
 
     # 检测问题类型
     is_factual = any(kw in q for kw in ["哪一部", "哪篇", "哪个", "何处", "何经", "何人"])
-    is_explanation = any(kw in q for kw in ["是什么", "何意", "为何", "为何", "解释"])
+    is_explanation = any(kw in q for kw in ["是什么", "何意", "为何", "解释", "什么意思"])
     is_practice = any(kw in q for kw in ["如何修", "怎么念", "怎样", "修行", "念佛"])
 
+    # 如果问的是具体经文（如"金刚经说什么"）→ fetch
+    # 如果问的是概念解释（如"什么是无常"）→ search + web
     if is_factual:
         strategy = "search"
         corpus = "cbeta"
-    elif has_sutra_name:
+    elif has_sutra_name and not is_explanation:
+        # 问具体经文但不是概念解释 → fetch
         strategy = "fetch"
         corpus = "cbeta"
-    elif is_practice:
-        strategy = "search"
-        corpus = "cbeta"
     else:
+        # 问概念、解释、或修行方法 → search
         strategy = "search"
         corpus = "cbeta"
 
@@ -219,6 +305,21 @@ def determine_retrieval_strategy(question: str) -> dict:
         "corpus": corpus,
         "has_sutra_name": has_sutra_name
     }
+
+def extract_search_keywords(question: str, concepts: list) -> str:
+    """
+    从问题中提取适合 buddha-search 的关键词
+    如果问题是完整句子，提取佛教概念作为搜索词
+    """
+    if concepts:
+        # 取第一个概念作为搜索关键词
+        return concepts[0]
+    # 如果没有概念，尝试提取问题中的关键佛教词
+    for kw in BUDDHIST_CONCEPTS:
+        if kw in question:
+            return kw
+    # 降级：返回原问题（可能搜不到）
+    return question
 
 # ============ 核心 Agent ============
 class ShakyamuniAgent:
@@ -245,16 +346,25 @@ class ShakyamuniAgent:
         # 3. 检索策略
         retrieval = determine_retrieval_strategy(question)
 
-        # 4. 佛经检索
+        # 4. 佛经检索 - 提取关键词避免问句干扰搜索
         sutra_results = []
-        if retrieval["strategy"] == "search":
-            sutra_results = search_sutra(question, max_results=5, corpus=retrieval["corpus"])
+        concepts = question_analysis.get("concepts_found", [])
+        search_keyword = extract_search_keywords(question, concepts)
+
+        if retrieval["strategy"] == "search" or retrieval["strategy"] == "fetch":
+            # 优先用提取的关键词搜索，问句直接搜往往返回空
+            if search_keyword != question:
+                sutra_results = search_sutra(search_keyword, max_results=5, corpus=retrieval["corpus"])
+            if not sutra_results:
+                sutra_results = search_sutra(question, max_results=5, corpus=retrieval["corpus"])
 
         # 5. 联网检索（如果需要）
         web_results = []
         if question_analysis.get("needs_web_search"):
-            print(f"[联网检索] 检测到现代话题，正在搜索...")
-            web_results = web_search(question)
+            print(f"[联网检索] 检测到佛教概念/现代话题，正在搜索...")
+            # 联网搜索也用关键词以获得更精确的结果
+            web_query = search_keyword if search_keyword != question else question
+            web_results = web_search(web_query)
             if web_results:
                 print(f"[联网检索] 获取到 {len(web_results)} 条结果")
 
