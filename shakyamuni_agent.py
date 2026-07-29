@@ -11,6 +11,19 @@ import subprocess
 import os
 from pathlib import Path
 
+# 简繁转换 (cbeta-search 只吃繁体, 例如 "菩萨" -> "菩薩")
+try:
+    import zhconv
+    HAS_ZHCONV = True
+except ImportError:
+    HAS_ZHCONV = False
+
+def to_traditional(text: str) -> str:
+    """简 -> 繁 (CBETA 全文是繁体)"""
+    if HAS_ZHCONV and text:
+        return zhconv.convert(text, 'zh-tw')
+    return text
+
 sys.path.insert(0, str(Path(__file__).parent))
 from config import MINIMAX_API_KEY, LLM_URL, WEB_SEARCH_ENABLED, WEB_SEARCH_TOP_K, BUDDHA_CLI_PATH
 
@@ -125,12 +138,16 @@ def call_buddha(args):
 
 def search_sutra(query, max_results=5, corpus="cbeta"):
     """搜索佛经"""
+    # CBETA 全文是繁体, cbeta-search 只匹配繁体字形; 先转繁再搜
+    query_tw = to_traditional(query)
+    if query_tw != query:
+        print(f"[search_sutra] 简体 -> 繁体: '{query}' -> '{query_tw}'")
     if corpus == "cbeta":
-        output = call_buddha(["cbeta-search", "--query", query, "--max-results", str(max_results)])
+        output = call_buddha(["cbeta-search", "--query", query_tw, "--max-results", str(max_results)])
     elif corpus == "tipitaka":
-        output = call_buddha(["tipitaka-search", "--query", query, "--max-results", str(max_results)])
+        output = call_buddha(["tipitaka-search", "--query", query_tw, "--max-results", str(max_results)])
     else:
-        output = call_buddha(["cbeta-search", "--query", query, "--max-results", str(max_results)])
+        output = call_buddha(["cbeta-search", "--query", query_tw, "--max-results", str(max_results)])
 
     if not output:
         print(f"[search_sutra] call_buddha returned None for query: {query}")
