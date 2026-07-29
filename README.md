@@ -68,21 +68,28 @@ python chat.py
 
 ```
 shakyamuni-agent/
-├── SKILL.md                 # 释迦牟尼人格框架
-├── app.py                   # Flask Web 服务
-├── chat.py                  # 命令行对话模式
-├── shakyamuni_agent.py     # 核心 Agent
+├── SKILL.md                 # 释迦牟尼人格框架 (skill 触发词/能力)
+├── AGENTS.md                # 项目导览 (架构/buddha-cli/M2.7 集成/已知问题)
+├── app.py                   # Flask Web 服务 (3 个路由)
+├── chat.py                  # 命令行对话模式 (CLI 单轮)
+├── shakyamuni_agent.py     # 核心 Agent (含 5 步关键词 + 简繁转换)
 ├── config.py.example       # 配置文件模板
 ├── templates/
-│   └── index.html         # Web 前端
+│   └── index.html         # Web 前端 (米色禅意风 + 字体切换 + 历史 panel)
+├── static/
+│   └── agent_logo.png     # 1024x1024 圆 logo
+├── kill_flask.ps1          # 一键杀 Flask 进程
 └── README.md
 ```
 
 ## API 配置
 
-使用 [硅基流动](https://siliconflow.cn/) API：
+使用 **MiniMax** 推理模型:
 
-- LLM: `MiniMax-M2.7`（MiniMax 中国版 `/v1/text/chatcompletion_v2`）
+- LLM: `MiniMax-M2.7` (reasoning model, 输出 <think> 块)
+- endpoint: `https://api.minimaxi.com/v1/text/chatcompletion_v2`
+- max_tokens: 2000 (reasoning 要预留预算)
+- 配置文件: `config.py` (在 .gitignore, 见 config.py.example 模板)
 
 ## 佛经数据来源
 
