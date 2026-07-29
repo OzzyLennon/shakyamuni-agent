@@ -164,7 +164,9 @@ def search_sutra(query, max_results=5, corpus="cbeta"):
                 # 清理XML标签
                 clean_context = re.sub(r"<[^>]+>", "", context)
                 if title and clean_context:
-                    results.append(f"《{title}》第{line}行：{clean_context}")
+                    # 后处理: 过滤 CBETA 元数据/版权/标题行
+                    if not is_cbeta_metadata(clean_context):
+                        results.append(f"《{title}》第{line}行：{clean_context}")
         return results
     except (json.JSONDecodeError, KeyError) as e:
         print(f"[search_sutra] Parse error: {e}")
@@ -312,6 +314,46 @@ BUDDHIST_TOPIC_KEYWORDS = [
     "释迦", "罗汉", "菩萨", "如来", "弥勒"
 ]
 
+# ============ 三层分类（修"佛号当搜索词"问题）============
+# DOCTRINE: 真教义概念, 任何时候都是高质量搜索词
+DOCTRINE_KEYWORDS = [
+    # 核心教义
+    "无常", "无我", "空", "中道", "缘起", "轮回", "因果",
+    "涅槃", "寂静", "圆满", "清净", "慈悲", "智慧", "般若",
+    "四谛", "八正道", "十二因缘", "三学", "五蕴", "八识",
+    "解脱", "生死", "往生", "净土", "极乐",
+    "佛性", "如来藏", "菩提", "觉悟", "佛果",
+    "业力", "执着", "分别", "妄想", "烦恼", "无明",
+    "禅定", "止观", "念佛", "持戒", "布施", "忍辱", "精进",
+    "皈依", "受戒", "忏悔", "回向", "加持", "灌顶",
+    # 经名缩写
+    "法华", "华严", "楞严", "楞伽", "圆觉", "维摩", "坛经",
+    "无量寿", "观无量寿", "普门品", "行愿品", "普贤行愿",
+]
+
+# NAME: 佛菩萨名号, 默认不当搜索词, 被问询修饰时使用
+NAME_KEYWORDS = [
+    # 佛号
+    "阿弥陀佛", "观世音", "释迦牟尼", "文殊", "普贤", "弥勒", "地藏",
+    "药师佛", "燃灯", "迦叶", "达摩", "维摩诘", "韦驮",
+    # 常见称谓/角色
+    "菩萨", "罗汉", "比丘", "比丘尼", "居士",
+    "善知识", "祖师", "法师", "上师", "禅师",
+]
+
+# GREETING: 寒暄用名号子集, 只有独立出现+不被问词修饰+有别的教义时才跳过
+GREETING_KEYWORDS = [
+    "阿弥陀佛", "南无", "善哉", "佛祖",
+]
+
+# QUERY_MODIFIERS: 用于判断 keyword 是否被"问询" (X 是问题对象) 而非寒暄
+QUERY_MODIFIERS = [
+    "什么是", "是什么", "是哪", "是谁", "何为", "何谓",
+    "怎么", "如何", "怎样", "怎样", "哪里", "哪儿", "哪个", "哪",
+    "含义", "意思", "解释", "介绍", "定义", "讲讲", "说说",
+    "理解", "意义", "内涵", "讲一下", "说一下",
+]
+
 def extract_buddhist_concepts(question: str) -> list:
     """从问题中提取佛教概念关键词"""
     found = []
@@ -409,31 +451,84 @@ def determine_retrieval_strategy(question: str) -> dict:
         "has_sutra_name": has_sutra_name
     }
 
+def is_query_target(question: str, keyword: str) -> bool:
+    """
+    判断 keyword 在 question 里是否作为问询对象（被"什么是/是谁/怎么"修饰）,
+    而非寒暄词。窗口：keyword 前后 6 个字符。
+    """
+    if not question or not keyword:
+        return False
+    idx = question.find(keyword)
+    if idx == -1:
+        return False
+    window_start = max(0, idx - 6)
+    window_end = min(len(question), idx + len(keyword) + 6)
+    context = question[window_start:window_end]
+    return any(qm in context for qm in QUERY_MODIFIERS)
+
+
+def is_cbeta_metadata(text: str) -> bool:
+    """
+    检测是否为 CBETA 元数据/版权/标题行, 而不是真正的经文内容。
+    用于 search_sutra 后处理, 避免把 "佛說七佛經"、"CBETA 出版信息" 喂给 LLM。
+    """
+    if not text:
+        return True
+    # 太短（< 8 字符）—— 多为标题/编号
+    if len(text) < 8:
+        return True
+    # 纯标点/数字（无中文字符）
+    if not re.search(r'[\u4e00-\u9fff]', text):
+        return True
+    # CBETA 元数据关键词
+    META_KEYWORDS = [
+        "CBETA", "電子佛典", "电子佛典", "TEMPLATE", "Vol.", "Vol ",
+        "Published", "Copyright", "(C)", "©",
+        "財團法人", "财团法人", "Foundation",
+        "All rights reserved", "Taisho", "T0", "T1", "T2",
+        "卍續藏", "卍新纂", "CBETA Online", "電子佛典基金會",
+    ]
+    if any(kw in text for kw in META_KEYWORDS):
+        return True
+    return False
+
+
 def extract_search_keywords(question: str, concepts: list) -> str:
     """
-    从问题中提取适合 cbeta-search 的关键词（按优先级降级）：
-    1. 已识别的佛教概念
-    2. BUDDHIST_CONCEPTS 列表中匹配到的词
-    3. 问题中 2-4 字中文词组（按长度降序）
-    4. 原问题本身
+    从问题中提取适合 cbeta-search 的关键词（5 步规则）:
+    1. 教义匹配 (DOCTRINE) - 教义永远是好关键词
+    2. 名号被问询修饰 (NAME + 是问询对象) - 如"什么是阿弥陀佛"
+    3. 名号独立出现 (NAME, 无问询修饰) - 纯名号也合理
+    4. 2-4 字中文词组降级 (按长度, 排除 stop_chars)
+    5. 兜底 = 原问题
+
+    注: 参数 `concepts` 保留以兼容旧调用方, 内部按新规则自取。
     """
-    # 1. 已识别概念（来自 analyze_question 的概念提取）
-    if concepts:
-        # 优先用较长的概念（更具体）
-        return max(concepts, key=len)
-    # 2. 扫描 BUDDHIST_CONCEPTS
-    matches = [kw for kw in BUDDHIST_CONCEPTS if kw in question]
-    if matches:
-        # 优先用较长的匹配（更具体）
-        return max(matches, key=len)
-    # 3. 提取问题中的 2-4 字中文词组
-    #    排除常见疑问词（何、为、是、什、么、如、何、怎、么、哪）
+    # 1. 教义匹配 (最高优先级 - 教义永远是好关键词)
+    doctrine_matches = [kw for kw in DOCTRINE_KEYWORDS if kw in question]
+    if doctrine_matches:
+        return max(doctrine_matches, key=len)
+
+    # 2. 名号匹配 + 被问询修饰 (如 "什么是阿弥陀佛" - 选"阿弥陀佛")
+    name_matches = [kw for kw in NAME_KEYWORDS if kw in question]
+    queried_names = [n for n in name_matches if is_query_target(question, n)]
+    if queried_names:
+        return max(queried_names, key=len)
+
+    # 3. 名号匹配 (无问询修饰) - 纯寒暄或独立名号, 仍然使用
+    #    例: "阿弥陀佛 空是什么" - 没教义就选名号; 不会到这里因为规则 1 已 return
+    #    例: "阿弥陀佛" - 选"阿弥陀佛" (搜得到也合理)
+    if name_matches:
+        return max(name_matches, key=len)
+
+    # 4. 2-4 字中文词组降级 (排除 stop_chars)
     stop_chars = set("何为是什么如同何怎么哪么这个这些那个那些")
     candidates = re.findall(r'[\u4e00-\u9fff]{2,4}', question)
     candidates = [c for c in candidates if not all(ch in stop_chars for ch in c)]
     if candidates:
         return max(candidates, key=len)
-    # 4. 兜底
+
+    # 5. 兜底
     return question
 
 # ============ 核心 Agent ============
