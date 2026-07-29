@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-释迦牟尼如Agent - 交互式对话模式
+释迦牟尼佛 - 交互式对话模式
 """
 
 import sys
@@ -11,7 +11,7 @@ from shakyamuni_agent import ShakyamuniAgent
 
 def print_welcome():
     print("=" * 60)
-    print("       释迦牟尼如Agent")
+    print("       释迦牟尼佛")
     print("=" * 60)
     print()
     print("我乃释迦牟尼佛。有什么问题，尽管来问。")

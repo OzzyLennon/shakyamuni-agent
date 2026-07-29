@@ -1,4 +1,4 @@
-# 释迦牟尼如Agent
+# 释迦牟尼佛 Agent
 
 以释迦牟尼佛身份，基于佛经教法的 AI 对话系统。
 
@@ -54,7 +54,7 @@ cp config.py.example config.py
 python app.py
 ```
 
-访问 http://127.0.0.1:5000
+访问 http://127.0.0.1:5001
 
 ## 命令行使用
 
@@ -80,7 +80,7 @@ shakyamuni-agent/
 
 使用 [硅基流动](https://siliconflow.cn/) API：
 
-- LLM: `Pro/deepseek-ai/DeepSeek-V3.2`
+- LLM: `MiniMax-M2.7`（MiniMax 中国版 `/v1/text/chatcompletion_v2`）
 
 ## 佛经数据来源
 

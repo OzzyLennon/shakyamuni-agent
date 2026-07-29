@@ -25,3 +25,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Project-local
+.buddha/        # buddha-cli runtime cache (5000+ XML 索引, 自动重建)
+.claude/         # Claude 本地 settings (含 token 等)
+*.bak            # 临时备份 (避免 test_*.py.bak 之类入仓)
+*.tmp

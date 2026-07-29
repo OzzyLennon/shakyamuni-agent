@@ -5,4 +5,4 @@ Get-Process python | Where-Object { $_.CommandLine -like "*app.py*" } | ForEach-
     Stop-Process -Force -Id $_.Id
 }
 Start-Sleep -Seconds 2
-netstat -ano | Select-String ":5000"
+netstat -ano | Select-String ":5001"
