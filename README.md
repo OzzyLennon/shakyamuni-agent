@@ -21,7 +21,7 @@ cd shakyamuni-agent
 ### 2. 安装依赖
 
 ```bash
-pip install flask requests
+pip install flask requests zhconv
 ```
 
 ### 3. 安装 buddha-cli
@@ -47,6 +47,8 @@ buddha init
 cp config.py.example config.py
 # 编辑 config.py，填入你的 API Key
 ```
+
+> **依赖说明**: `zhconv` 用于 cbeta 检索的简繁转换 (cbeta XML 全文繁体, 简体输入会自动转 "菩萨" -> "菩薩")
 
 ### 5. 启动
 
